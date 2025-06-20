@@ -15,15 +15,15 @@ df_uf['nome'] = df_uf['nome'].str.strip()
 df_suic = pd.read_csv("suicidio-de-homens-por-armas-de-fogo.csv", sep=';', usecols=['nome','ano', 'valor'])
 df_suic['nome'] = df_suic['nome'].str.strip()
 
-# Carregando homicídios por raça/cor
-df_negros = pd.read_csv("homicidios-negros.csv", sep=';', usecols=['nome', 'ano', 'valor'])
-df_negros['grupo'] = 'Negros'
+# Carregando homicídios por sexo
+df_homens = pd.read_csv("homic-homens.csv", sep=';', usecols=['nome', 'ano', 'valor'])
+df_homens['sexo'] = 'Homens'
 
-df_nao_negros = pd.read_csv("homicidios-nao-negros.csv", sep=';', usecols=['nome', 'ano', 'valor'])
-df_nao_negros['grupo'] = 'Não Negros'
+df_mulheres = pd.read_csv("homic-mulheres.csv", sep=';', usecols=['nome', 'ano', 'valor'])
+df_mulheres['sexo'] = 'Mulheres'
 
-df_cor = pd.concat([df_negros, df_nao_negros], ignore_index=True)
-df_cor['nome'] = df_cor['nome'].str.strip()
+df_sexo = pd.concat([df_homens, df_mulheres], ignore_index=True)
+df_sexo['nome'] = df_sexo['nome'].str.strip()
 
 # GeoJSON
 geojson_url = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson'
@@ -46,20 +46,18 @@ for feature in geojson_estados['features']:
 
 df_uf['sigla'] = df_uf['nome'].map(siglas)
 
-# Layout
 app.layout = dbc.Container([
-    html.H2("📊 Análise de Homicídios e Suicídios por Armas de Fogo", className="text-center my-4 text-primary"),
+    html.H2("\ud83d\udcca Análise de Homicídios e Suicídios por Armas de Fogo", className="text-center my-4 text-primary"),
 
     dcc.Tabs(id="tabs", value='tab-mapa', children=[
-        dcc.Tab(label='🗺️ Mapa de Homicídios', value='tab-mapa'),
-        dcc.Tab(label='🔫 Top Estados Suicídios', value='tab-suicidios'),
-        dcc.Tab(label='🎯 Homicídios por Cor/Raça', value='tab-cor')
+        dcc.Tab(label='\ud83d\uddfa\ufe0f Mapa de Homicídios', value='tab-mapa'),
+        dcc.Tab(label='\ud83d\udd2b Top Estados Suicídios', value='tab-suicidios'),
+        dcc.Tab(label='\ud83d\udc6b Homicídios por Sexo', value='tab-sexo')
     ]),
 
     html.Div(id='conteudo-abas')
 ], fluid=True)
 
-# Alterna entre abas
 @callback(
     Output('conteudo-abas', 'children'),
     Input('tabs', 'value')
@@ -103,25 +101,24 @@ def renderizar_abas(aba):
             ], width=12)
         ])
 
-    elif aba == 'tab-cor':
+    elif aba == 'tab-sexo':
         return dbc.Row([
             dbc.Col([
                 html.Label("Ano:"),
                 dcc.Slider(
-                    df_cor['ano'].min(),
-                    df_cor['ano'].max(),
-                    value=df_cor['ano'].min(),
-                    marks={str(ano): str(ano) for ano in df_cor['ano'].unique()},
+                    df_sexo['ano'].min(),
+                    df_sexo['ano'].max(),
+                    value=df_sexo['ano'].min(),
+                    marks={str(ano): str(ano) for ano in df_sexo['ano'].unique()},
                     step=None,
-                    id='ano-cor'
+                    id='ano-sexo'
                 )
             ], width=12),
             dbc.Col([
-                dcc.Graph(id='grafico-cor')
+                dcc.Graph(id='grafico-sexo')
             ], width=12)
         ])
 
-# Mapa de calor de homicídios
 @callback(
     Output('homicidios', 'figure'),
     Input('anos-homic', 'value')
@@ -141,11 +138,10 @@ def atualizar_mapa(ano):
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(margin={"r": 0, "t": 50, "l": 0, "b": 0})
+    fig.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
 
     return fig
 
-# Gráfico de suicídios
 @callback(
     Output('grafico-suicidios', 'figure'),
     Input('ano-suicidio', 'value')
@@ -165,23 +161,23 @@ def atualizar_suicidios(ano):
 
     return fig
 
-# Gráfico de homicídios por cor
 @callback(
-    Output('grafico-cor', 'figure'),
-    Input('ano-cor', 'value')
+    Output('grafico-sexo', 'figure'),
+    Input('ano-sexo', 'value')
 )
-def atualizar_homicidios_cor(ano):
-    df_filtrado = df_cor[df_cor['ano'] == ano].groupby('grupo')['valor'].sum().reset_index()
+def atualizar_homicidios_sexo(ano):
+    df_filtrado = df_sexo[df_sexo['ano'] == ano].groupby('sexo')['valor'].sum().reset_index()
 
     fig = px.pie(
         df_filtrado,
-        names='grupo',
+        names='sexo',
         values='valor',
-        title=f"Homicídios por Cor/Raça ({ano})",
-        color_discrete_sequence=px.colors.qualitative.Set1
+        title=f"Homicídios por Sexo ({ano})",
+        color_discrete_sequence=px.colors.qualitative.Set2
     )
 
     return fig
 
 if __name__ == '__main__':
     app.run(debug=True)
+
